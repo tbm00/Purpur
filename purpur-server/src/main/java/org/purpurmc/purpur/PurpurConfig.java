@@ -468,6 +468,15 @@ public class PurpurConfig {
         if (endermanShortHeight) EntityType.ENDERMAN.dimensions = EntityDimensions.scalable(0.6F, 1.9F);
     }
 
+    public static boolean maceLimiterEnabled = false;
+    public static int maceLimiterMinTicksBetweenSmashHits;
+    public static int maceLimiterMaxSmashBonusPerHit;
+    private static void itemSettings() {
+        maceLimiterEnabled = getBoolean("settings.items.mace.limit-smash-hits", false);
+        maceLimiterMinTicksBetweenSmashHits = getInt("settings.items.mace.min-ticks-between-smash-hits", 5);
+        maceLimiterMaxSmashBonusPerHit = getInt("settings.items.mace.max-smash-hit-bonus", 20);
+    }
+
     public static boolean allowWaterPlacementInTheEnd = true;
     private static void allowWaterPlacementInEnd() {
         allowWaterPlacementInTheEnd = getBoolean("settings.allow-water-placement-in-the-end", allowWaterPlacementInTheEnd);

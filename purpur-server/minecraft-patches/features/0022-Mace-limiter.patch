@@ -1,0 +1,86 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: tbm00 <89701900+tbm00@users.noreply.github.com>
+Date: Sun, 16 Nov 2025 17:42:50 -0600
+Subject: [PATCH] Mace limiter
+
+This patch intends to prevent multi-hit mace smash abuse by enforcing a per-player cooldown between smash hits and capping bonus fall-damage per strike. This minimizes hacked clients triggering multiple full-damage mace hits in the same tick, instantly killing players despite totems. Uses new configurable options in purpur.yml for enabling the limiter, setting minimum ticks between smash hits, and defining the maximum smash bonus damage per hit.
+
+diff --git a/net/minecraft/world/item/MaceItem.java b/net/minecraft/world/item/MaceItem.java
+index d3eb13865ded58147ea652cc98b37923706ab82f..d5269e264b14f9360320924e3fda83b75c052166 100644
+--- a/net/minecraft/world/item/MaceItem.java
++++ b/net/minecraft/world/item/MaceItem.java
+@@ -1,6 +1,9 @@
+ package net.minecraft.world.item;
+ 
++import java.util.HashMap;
+ import java.util.List;
++import java.util.Map;
++import java.util.UUID;
+ import java.util.function.Predicate;
+ import javax.annotation.Nullable;
+ import net.minecraft.core.BlockPos;
+@@ -34,6 +37,8 @@ public class MaceItem extends Item {
+     private static final float SMASH_ATTACK_HEAVY_THRESHOLD = 5.0F;
+     public static final float SMASH_ATTACK_KNOCKBACK_RADIUS = 3.5F;
+     private static final float SMASH_ATTACK_KNOCKBACK_POWER = 0.7F;
++    // Purpur - Mace limiter
++    private static final Map<UUID, Long> LAST_SMASH_TICK = new HashMap<>();
+ 
+     public MaceItem(Item.Properties properties) {
+         super(properties);
+@@ -119,19 +124,45 @@ public class MaceItem extends Item {
+             } else {
+                 float f = 3.0F;
+                 float f1 = 8.0F;
+-                float f2 = livingEntity.fallDistance;
+-                float f3;
+-                if (f2 <= 3.0F) {
+-                    f3 = 4.0F * f2;
+-                } else if (f2 <= 8.0F) {
+-                    f3 = 12.0F + 2.0F * (f2 - 3.0F);
++                // Purpur start - Mace limiter
++                float f2fallDistance = livingEntity.fallDistance;
++                float f3bonus;
++                if (f2fallDistance <= 3.0F) {
++                    f3bonus = 4.0F * f2fallDistance;
++                } else if (f2fallDistance <= 8.0F) {
++                    f3bonus = 12.0F + 2.0F * (f2fallDistance - 3.0F);
+                 } else {
+-                    f3 = 22.0F + f2 - 8.0F;
++                    f3bonus = 22.0F + f2fallDistance - 8.0F;
+                 }
+ 
+-                return livingEntity.level() instanceof ServerLevel serverLevel
+-                    ? f3 + EnchantmentHelper.modifyFallBasedDamage(serverLevel, livingEntity.getWeaponItem(), target, damageSource, 0.0F) * f2
+-                    : f3;
++                if (livingEntity.level() instanceof ServerLevel serverLevel) {
++                    f3bonus += EnchantmentHelper.modifyFallBasedDamage(serverLevel, livingEntity.getWeaponItem(), target, damageSource, 0.0F) * f2fallDistance;
++                    
++                    if (org.purpurmc.purpur.PurpurConfig.maceLimiterEnabled) {
++                        long now = serverLevel.getGameTime();
++                        UUID uuid = livingEntity.getUUID();
++                        Long lastTick = LAST_SMASH_TICK.get(uuid);
++
++                        if (lastTick != null) {
++                            long diff = now - lastTick;
++                            // block smash hits in the same tick OR within cooldown
++                            if (diff < 1L || diff < org.purpurmc.purpur.PurpurConfig.maceLimiterMinTicksBetweenSmashHits) {
++                                return 0.0F;
++                            }
++                        }
++
++                        LAST_SMASH_TICK.put(uuid, now);
++
++                        // cap per-hit smash damage
++                        return (f3bonus > org.purpurmc.purpur.PurpurConfig.maceLimiterMaxSmashBonusPerHit) ? 
++                                    org.purpurmc.purpur.PurpurConfig.maceLimiterMaxSmashBonusPerHit : f3bonus;
++                    } else {
++                        return f3bonus;
++                    }
++                } else {
++                    return f3bonus;
++                }
++                // Purpur end - Mace limiter
+             }
+         } else {
+             return 0.0F;
