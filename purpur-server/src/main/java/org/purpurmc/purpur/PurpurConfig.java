@@ -430,6 +430,15 @@ public class PurpurConfig {
         soulSandBlockReverseBubbleColumnFlow = getBoolean("settings.blocks.soul-sand.reverse-bubble-column-flow", soulSandBlockReverseBubbleColumnFlow);
     }
 
+    public static boolean maceLimiterEnabled = false;
+    public static int maceLimiterMinTicksBetweenSmashHits;
+    public static int maceLimiterMaxSmashBonusPerHit;
+    private static void itemSettings() {
+        maceLimiterEnabled = getBoolean("settings.items.mace.limit-smash-hits", false);
+        maceLimiterMinTicksBetweenSmashHits = getInt("settings.items.mace.min-ticks-between-smash-hits", 5);
+        maceLimiterMaxSmashBonusPerHit = getInt("settings.items.mace.max-smash-hit-bonus", 30);
+    }
+
     public static boolean allowInapplicableEnchants = false;
     public static boolean allowIncompatibleEnchants = false;
     public static boolean allowHigherEnchantsLevels = false;
